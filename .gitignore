@@ -1,0 +1,9 @@
+/doom/.config/doom/custom.el
+/editors/doom/custom.el
+result/
+result
+docs/content/*
+./.emacs
+docs/public
+/.emacs/
+docs/.hugo_build.lock

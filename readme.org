@@ -1,0 +1,44 @@
+#+title: Dotfiles
+#+property: header-args :noweb yes :mkdirp yes
+#+property: header-args:nix :tangle no
+#+property: header-args:conf-yaml :tangle ~/.fzf-marks
+#+startup: fold
+#+hugo_base_dir: docs
+#+hugo_section: /
+
+#+HTML: <a href="https://builtwithnix.org"><img src="https://img.shields.io/static/v1?logo=nixos&logoColor=white&label=&message=Built%20with%20Nix&color=41439a&style=for-the-badge"></a>
+#+HTML: <a href="https://github.com/jhilker1/nixos-dots/blob/main/LICENSE"><img src="https://img.shields.io/github/license/jhilker1/nixos-dots?style=for-the-badge"></a>
+
+These are my dotfiles, for both NixOS and non-NixOS. There are many like them, but these are mine.
+
+- =system/=: global system configuration, such as desktop, cloud storage, etc.
+- =hosts/=: machine-specific configuration, such as hardware.
+- =home/=: home-manager configurations.
+- =packages/=: custom packages
+
+* Getting Started
+:PROPERTIES:
+:EXPORT_HUGO_SECTION: getting-started/
+:END:
+** TODO Installation
+:PROPERTIES:
+:export_hugo_bundle: install/
+:EXPORT_FILE_NAME: index
+:END:
+1. Back up your old dotfiles, and clone the repo with this command:
+#+begin_src bash
+git clone https://github.com/jhilker1/nixos-dots.git $HOME/.dotfiles
+#+end_src
+
+2. See below:
+
+*** OS Installation
+*** WSL Installation
+*** Home-Manager/Dotfiles Installation
+
+** Updating Qtile
+:PROPERTIES:
+:export_hugo_bundle: updating/
+:export_file_name: index
+:END:
+From this directory, run =./scripts/update-qtile.sh=.

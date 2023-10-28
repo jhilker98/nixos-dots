@@ -1,0 +1,2151 @@
+#+title: NixOS Configuration
+#+property: header-args :noweb yes :mkdirp yes :tangle no
+#+startup: fold
+#+hugo_base_dir: docs
+#+hugo_section: /
+
+* System
+:properties:
+:export_hugo_section: system/
+:end:
+
+** Default Module :noexport:
+#+begin_src nix :tangle system/default.nix
+{ config, lib, pkgs, ...}:
+{
+  imports = [
+    ./desktop
+    ./users.nix
+    ./security_gpg.nix
+    ./flakes.nix
+    ./shells.nix
+    ./networking_i18n.nix
+    ./devel.nix
+  ];
+
+
+  system.stateVersion = "22.05";
+
+  environment.systemPackages = let sddmClairvoyance = pkgs.callPackage ../packages/sddmThemes/clairvoyance.nix {}; in with pkgs; [
+    sddmClairvoyance
+    wget
+    firefox
+    xfce.thunar
+    xfce.thunar-volman
+    xfce.thunar-dropbox-plugin
+    xfce.thunar-archive-plugin
+    xfce.thunar-media-tags-plugin
+    alacritty
+    nano
+    git
+    git-crypt
+    rofi
+    emacs
+    libnotify
+    xfce.xfce4-terminal
+    # audio
+    pulseaudio
+
+    # Openbox
+    obconf
+    openbox-menu
+    libadwaita
+    gtk2
+    gtk3
+
+    ## Wayland
+    wayland
+    wayland-utils
+    wdisplays
+    wlr-randr
+
+    libcanberra-gtk3
+    brightnessctl
+    nitrogen
+    feh
+    autorandr
+    arandr
+    ## wifi
+    iwgtk
+    keychain
+    libsForQt5.kwallet
+
+
+    gparted
+    ## libby requirements
+    jq
+    pup
+    recode
+    fzf
+
+    rofi-rbw
+    nix-prefetch-git
+    discord
+  ];
+
+}
+#+end_src
+
+
+** Desktop
+*** Default Module :noexport:
+#+begin_src nix :tangle system/desktop/default.nix
+{...}:
+{
+  imports = [
+    ./audio
+    ./fonts
+    ./x11
+  ];
+
+}
+#+end_src
+
+*** X11 and Printing
+#+begin_src nix :tangle system/desktop/x11/default.nix
+{ config, lib, pkgs, ... }:
+{
+  services.xserver = {
+    enable = true;
+    layout = "us"; ## configure keymap
+    xkbOptions = "terminate:ctrl_alt_bksp, eurosign:e,caps:escape"; # map caps to escape
+    libinput.enable = true;  # Enable touchpad support (enabled default in most desktopManager).
+    displayManager = {
+      defaultSession = "none+qtile";
+      sddm = {
+        enable = true;
+        theme = "clairvoyance";
+      };
+    };
+    windowManager = {
+      qtile.enable = true;
+      openbox.enable = true;
+      awesome = {
+        enable = true;
+        luaModules = with pkgs.luaPackages; [
+         vicious
+        ];
+      };
+    };
+  };
+
+  services.printing.enable = true;
+  programs.sway.enable = true;
+  programs.dconf.enable = true;
+
+  nixpkgs.overlays = [(
+    self: super: {
+      <<qtileWithExtrasOverlay>>
+    })];
+
+}
+#+end_src
+
+**** Enabling Qtile Extras :noexport:
+#+name: qtileWithExtrasOverlay
+#+begin_src nix
+qtile = super.qtile.unwrapped.override (old: rec {
+        src = super.fetchFromGitHub {
+          owner = "qtile";
+          repo = "qtile";
+          rev = ''5161618cda4c19f74534c516a8df91730ad9ff04'';  # qtile
+          sha256 = ''0k3a8kbz17j9h2j3k96wj3cm3x44f2p8jf2pm5j4wjyfd5pvjmdr'';  # qtile
+        };
+        qtile-extras = pkgs.python3Packages.buildPythonPackage {
+          pname = "qtile-extras";
+          version = "0.1.0";
+          src = super.fetchgit {
+            url = "https://github.com/elparaguayo/qtile-extras";
+            rev = ''0df616cd946e8d644c712c47554ca253691b1527'';  # extras
+            sha256 = ''04jxmnawl1cbdkafydkq6vfhfczk7j4jhhy4nv7j39s09f54q98j'';  # extras
+            leaveDotGit = true;
+          };
+          doCheck = false;  # do not run tests because it can't find libqtile anyway
+          nativeBuildInputs = with pkgs; [ git ];
+          buildInputs = with pkgs.python3Packages; [ setuptools_scm ];
+          meta = with super.lib; {
+            homepage = "https://github.com/elParaguayo/qtile-extras";
+            license = licenses.mit;
+            description = "Extras for Qtile";
+            platforms = platforms.linux;
+          };
+        };
+        propagatedBuildInputs = (old.propagatedBuildInputs or []) ++ (with pkgs; [
+          libinput
+          libxkbcommon
+          pulseaudio
+          wayland
+          wlroots
+          qtile-extras
+        ]) ++ (with pkgs.python3Packages; [
+          dbus-next
+        ]);
+      });
+#+end_src
+
+
+*** Audio
+#+begin_src nix :tangle system/desktop/audio/default.nix
+{ config, lib, pkgs, ... }:
+
+{
+  sound = {
+    enable = true;
+    mediaKeys.enable = true;
+  };
+  hardware.pulseaudio.enable = false;
+  security.rtkit.enable = true;
+  services.pipewire = {
+    enable = true;
+    alsa.enable = true;
+    alsa.support32Bit = true;
+    pulse.enable = true;
+      # If you want to use JACK applications, uncomment this
+      #jack.enable = true;
+
+      # use the example session manager (no others are packaged yet so this is enabled by default,
+      # no need to redefine it in your config for now)
+      #media-session.enable = true;
+  };
+
+}
+#+end_src
+
+*** Fonts
+#+begin_src nix :tangle system/desktop/fonts/default.nix
+{ config, lib, pkgs, ... }:
+{
+  fonts = {
+    fontconfig = {
+      #ultimate.enable = true; # This enables fontconfig-ultimate settings for better font rendering
+      defaultFonts = {
+        monospace = ["Iosevka"];
+        sansSerif = ["Roboto"];
+      };
+    };
+    fontDir.enable = true;
+    enableGhostscriptFonts = true;
+    fonts = with pkgs; [
+      roboto
+      roboto-mono
+      (iosevka.override {
+        privateBuildPlan = builtins.readFile ./iosevka.toml;
+        set = "josevka";
+      })
+
+      (nerdfonts.override {
+        fonts = ["Iosevka"];
+      })
+      terminus_font
+      noto-fonts
+    ];
+  };
+}
+#+end_src
+
+**** Iosevka Build Plans :noexport:
+#+begin_src conf-toml
+[buildPlans.iosevka-josevka]
+family = "Josevka"
+spacing = "normal"
+serifs = "sans"
+export-glyph-names = true
+no-cv-ss = true
+
+[buildPlans.iosevka-josevka.variants]
+  inherits = "ss03"
+
+    [buildPlans.iosevka-josevka.variants.design]
+    a = "double-storey-tailed"
+
+    b = "toothed"
+    d = "tailed-serifless"
+    f = "flat-hook-crossbar-at-x-height"
+    g = "single-storey-flat-hook-serifless"
+    k = "symmetric-connected-serifless"
+    q = "tailed"
+    t = "flat-hook-short-neck"
+    capital-j = "serifed-symmetric"
+    four = "semi-open-non-crossing"
+    dollar = "open"
+    cent = "open"
+    percent = "rings-continuous-slash"
+    question = "corner"
+
+    [buildPlans.iosevka-josevka.variants.italic]
+    f = "flat-hook-tailed-crossbar-at-x-height"
+    l = "tailed-serifed"
+    q = "diagonal-tailed"
+
+[buildPlans.iosevka-josevka.weights.light]
+shape = 300
+menu = 300
+css = 300
+
+[buildPlans.iosevka-josevka.weights.regular]
+shape = 400
+menu = 400
+css = 400
+
+[buildPlans.iosevka-josevka.weights.medium]
+shape = 500
+menu = 500
+css = 500
+
+
+[buildPlans.iosevka-josevka.weights.bold]
+shape = 700
+menu = 700
+css = 700
+
+[buildPlans.iosevka-josevka.slopes.upright]
+angle = 0
+shape = "upright"
+menu = "upright"
+css = "normal"
+
+[buildPlans.iosevka-josevka.slopes.italic]
+angle = 9.4
+shape = "italic"
+menu = "italic"
+css = "italic"
+
+[buildPlans.iosevka-josevka.widths.normal]
+shape = 550
+menu = 5
+css = "normal"
+
+# -----------------------------------------
+# Double-ended hyphen arrows
+# -----------------------------------------
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57600 # 0xe100
+featureTag = 'dlig'
+sequence = "<->"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57601 # 0xe101
+featureTag = 'dlig'
+sequence = "<-->"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57602 # 0xe102
+featureTag = 'dlig'
+sequence = "<--->"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57603 # 0xe103
+featureTag = 'dlig'
+sequence = "<---->"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57604 # 0xe104
+featureTag = 'dlig'
+sequence = "<----->"
+
+# -----------------------------------------
+# Double-ended equals arrows
+# -----------------------------------------
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57605 # 0xe105
+featureTag = 'dlig'
+sequence = "<=>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57606 # 0xe106
+featureTag = 'dlig'
+sequence = "<==>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57607 # 0xe107
+featureTag = 'dlig'
+sequence = "<===>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57608 # 0xe108
+featureTag = 'dlig'
+sequence = "<====>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57609 # 0xe109
+featureTag = 'dlig'
+sequence = "<=====>"
+
+# -----------------------------------------
+# Double-ended asterisk operators
+# -----------------------------------------
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57610 # 0xe10a
+featureTag = 'dlig'
+sequence = "<**>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57611 # 0xe10b
+featureTag = 'dlig'
+sequence = "<***>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57612 # 0xe10c
+featureTag = 'dlig'
+sequence = "<****>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57613 # 0xe10d
+featureTag = 'dlig'
+sequence = "<*****>"
+
+# -----------------------------------------
+# HTML comments
+# -----------------------------------------
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57614 # 0xe10e
+featureTag = 'dlig'
+sequence = "<!--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57615 # 0xe10f
+featureTag = 'dlig'
+sequence = "<!---"
+
+# -----------------------------------------
+# Three-char ops with discards
+# -----------------------------------------
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57616 # 0xe110
+featureTag = 'dlig'
+sequence = "<$"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57617 # 0xe111
+featureTag = 'dlig'
+sequence = "<$>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57618 # 0xe112
+featureTag = 'dlig'
+sequence = "$>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57619 # 0xe113
+featureTag = 'dlig'
+sequence = "<."
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57620 # 0xe114
+featureTag = 'dlig'
+sequence = "<.>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57621 # 0xe115
+featureTag = 'dlig'
+sequence = ".>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57622 # 0xe116
+featureTag = 'dlig'
+sequence = "<*"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57623 # 0xe117
+featureTag = 'dlig'
+sequence = "<*>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57624 # 0xe118
+featureTag = 'dlig'
+sequence = "*>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57625 # 0xe119
+featureTag = 'dlig'
+sequence = "<\\"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57626 # 0xe11a
+featureTag = 'dlig'
+sequence = "<\\>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57627 # 0xe11b
+featureTag = 'dlig'
+sequence = "\\>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57628 # 0xe11c
+featureTag = 'dlig'
+sequence = "</"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57629 # 0xe11d
+featureTag = 'dlig'
+sequence = "</>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57630 # 0xe11e
+featureTag = 'dlig'
+sequence = "/>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57631 # 0xe11f
+featureTag = 'dlig'
+sequence = "<\""
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57632 # 0xe120
+featureTag = 'dlig'
+sequence = "<\">"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57633 # 0xe121
+featureTag = 'dlig'
+sequence = "\">"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57634 # 0xe122
+featureTag = 'dlig'
+sequence = "<'"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57635 # 0xe123
+featureTag = 'dlig'
+sequence = "<'>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57636 # 0xe124
+featureTag = 'dlig'
+sequence = "'>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57637 # 0xe125
+featureTag = 'dlig'
+sequence = "<^"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57638 # 0xe126
+featureTag = 'dlig'
+sequence = "<^>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57639 # 0xe127
+featureTag = 'dlig'
+sequence = "^>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57640 # 0xe128
+featureTag = 'dlig'
+sequence = "<&"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57641 # 0xe129
+featureTag = 'dlig'
+sequence = "<&>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57642 # 0xe12a
+featureTag = 'dlig'
+sequence = "&>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57643 # 0xe12b
+featureTag = 'dlig'
+sequence = "<%"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57644 # 0xe12c
+featureTag = 'dlig'
+sequence = "<%>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57645 # 0xe12d
+featureTag = 'dlig'
+sequence = "%>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57646 # 0xe12e
+featureTag = 'dlig'
+sequence = "<@"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57647 # 0xe12f
+featureTag = 'dlig'
+sequence = "<@>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57648 # 0xe130
+featureTag = 'dlig'
+sequence = "@>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57649 # 0xe131
+featureTag = 'dlig'
+sequence = "<#"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57650 # 0xe132
+featureTag = 'dlig'
+sequence = "<#>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57651 # 0xe133
+featureTag = 'dlig'
+sequence = "#>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57652 # 0xe134
+featureTag = 'dlig'
+sequence = "<+"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57653 # 0xe135
+featureTag = 'dlig'
+sequence = "<+>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57654 # 0xe136
+featureTag = 'dlig'
+sequence = "+>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57655 # 0xe137
+featureTag = 'dlig'
+sequence = "<-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57656 # 0xe138
+featureTag = 'dlig'
+sequence = "<->"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57657 # 0xe139
+featureTag = 'dlig'
+sequence = "->"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57658 # 0xe13a
+featureTag = 'dlig'
+sequence = "<!"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57659 # 0xe13b
+featureTag = 'dlig'
+sequence = "<!>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57660 # 0xe13c
+featureTag = 'dlig'
+sequence = "!>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57661 # 0xe13d
+featureTag = 'dlig'
+sequence = "<?"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57662 # 0xe13e
+featureTag = 'dlig'
+sequence = "<?>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57663 # 0xe13f
+featureTag = 'dlig'
+sequence = "?>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57664 # 0xe140
+featureTag = 'dlig'
+sequence = "<|"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57665 # 0xe141
+featureTag = 'dlig'
+sequence = "<|>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57666 # 0xe142
+featureTag = 'dlig'
+sequence = "|>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57667 # 0xe143
+featureTag = 'dlig'
+sequence = "<:"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57668 # 0xe144
+featureTag = 'dlig'
+sequence = "<:>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57669 # 0xe145
+featureTag = 'dlig'
+sequence = ":>"
+
+# -----------------------------------------
+# Colons
+# -----------------------------------------
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57670 # 0xe146
+featureTag = 'dlig'
+sequence = "::"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57671 # 0xe147
+featureTag = 'dlig'
+sequence = ":::"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57672 # 0xe148
+featureTag = 'dlig'
+sequence = "::::"
+
+# -----------------------------------------
+# Arrow-like operators
+# -----------------------------------------
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57673 # 0xe149
+featureTag = 'dlig'
+sequence = "->"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57674 # 0xe14a
+featureTag = 'dlig'
+sequence = "->-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57675 # 0xe14b
+featureTag = 'dlig'
+sequence = "->--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57676 # 0xe14c
+featureTag = 'dlig'
+sequence = "->>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57677 # 0xe14d
+featureTag = 'dlig'
+sequence = "->>-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57678 # 0xe14e
+featureTag = 'dlig'
+sequence = "->>--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57679 # 0xe14f
+featureTag = 'dlig'
+sequence = "->>>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57680 # 0xe150
+featureTag = 'dlig'
+sequence = "->>>-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57681 # 0xe151
+featureTag = 'dlig'
+sequence = "->>>--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57682 # 0xe152
+featureTag = 'dlig'
+sequence = "-->"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57683 # 0xe153
+featureTag = 'dlig'
+sequence = "-->-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57684 # 0xe154
+featureTag = 'dlig'
+sequence = "-->--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57685 # 0xe155
+featureTag = 'dlig'
+sequence = "-->>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57686 # 0xe156
+featureTag = 'dlig'
+sequence = "-->>-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57687 # 0xe157
+featureTag = 'dlig'
+sequence = "-->>--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57688 # 0xe158
+featureTag = 'dlig'
+sequence = "-->>>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57689 # 0xe159
+featureTag = 'dlig'
+sequence = "-->>>-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57690 # 0xe15a
+featureTag = 'dlig'
+sequence = "-->>>--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57691 # 0xe15b
+featureTag = 'dlig'
+sequence = ">-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57692 # 0xe15c
+featureTag = 'dlig'
+sequence = ">--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57693 # 0xe15d
+featureTag = 'dlig'
+sequence = ">>-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57694 # 0xe15e
+featureTag = 'dlig'
+sequence = ">>--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57695 # 0xe15f
+featureTag = 'dlig'
+sequence = ">>>-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57696 # 0xe160
+featureTag = 'dlig'
+sequence = ">>>--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57697 # 0xe161
+featureTag = 'dlig'
+sequence = "=>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57698 # 0xe162
+featureTag = 'dlig'
+sequence = "=>="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57699 # 0xe163
+featureTag = 'dlig'
+sequence = "=>=="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57700 # 0xe164
+featureTag = 'dlig'
+sequence = "=>>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57701 # 0xe165
+featureTag = 'dlig'
+sequence = "=>>="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57702 # 0xe166
+featureTag = 'dlig'
+sequence = "=>>=="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57703 # 0xe167
+featureTag = 'dlig'
+sequence = "=>>>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57704 # 0xe168
+featureTag = 'dlig'
+sequence = "=>>>="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57705 # 0xe169
+featureTag = 'dlig'
+sequence = "=>>>=="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57706 # 0xe16a
+featureTag = 'dlig'
+sequence = "==>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57707 # 0xe16b
+featureTag = 'dlig'
+sequence = "==>="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57708 # 0xe16c
+featureTag = 'dlig'
+sequence = "==>=="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57709 # 0xe16d
+featureTag = 'dlig'
+sequence = "==>>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57710 # 0xe16e
+featureTag = 'dlig'
+sequence = "==>>="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57711 # 0xe16f
+featureTag = 'dlig'
+sequence = "==>>=="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57712 # 0xe170
+featureTag = 'dlig'
+sequence = "==>>>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57713 # 0xe171
+featureTag = 'dlig'
+sequence = "==>>>="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57714 # 0xe172
+featureTag = 'dlig'
+sequence = "==>>>=="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57715 # 0xe173
+featureTag = 'dlig'
+sequence = ">="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57716 # 0xe174
+featureTag = 'dlig'
+sequence = ">=="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57717 # 0xe175
+featureTag = 'dlig'
+sequence = ">>="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57718 # 0xe176
+featureTag = 'dlig'
+sequence = ">>=="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57719 # 0xe177
+featureTag = 'dlig'
+sequence = ">>>="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57720 # 0xe178
+featureTag = 'dlig'
+sequence = ">>>=="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57721 # 0xe179
+featureTag = 'dlig'
+sequence = "<-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57722 # 0xe17a
+featureTag = 'dlig'
+sequence = "-<-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57723 # 0xe17b
+featureTag = 'dlig'
+sequence = "--<-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57724 # 0xe17c
+featureTag = 'dlig'
+sequence = "<<-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57725 # 0xe17d
+featureTag = 'dlig'
+sequence = "-<<-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57726 # 0xe17e
+featureTag = 'dlig'
+sequence = "--<<-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57727 # 0xe17f
+featureTag = 'dlig'
+sequence = "<<<-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57728 # 0xe180
+featureTag = 'dlig'
+sequence = "-<<<-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57729 # 0xe181
+featureTag = 'dlig'
+sequence = "--<<<-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57730 # 0xe182
+featureTag = 'dlig'
+sequence = "<--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57731 # 0xe183
+featureTag = 'dlig'
+sequence = "-<--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57732 # 0xe184
+featureTag = 'dlig'
+sequence = "--<--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57733 # 0xe185
+featureTag = 'dlig'
+sequence = "<<--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57734 # 0xe186
+featureTag = 'dlig'
+sequence = "-<<--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57735 # 0xe187
+featureTag = 'dlig'
+sequence = "--<<--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57736 # 0xe188
+featureTag = 'dlig'
+sequence = "<<<--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57737 # 0xe189
+featureTag = 'dlig'
+sequence = "-<<<--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57738 # 0xe18a
+featureTag = 'dlig'
+sequence = "--<<<--"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57739 # 0xe18b
+featureTag = 'dlig'
+sequence = "-<"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57740 # 0xe18c
+featureTag = 'dlig'
+sequence = "--<"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57741 # 0xe18d
+featureTag = 'dlig'
+sequence = "-<<"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57742 # 0xe18e
+featureTag = 'dlig'
+sequence = "--<<"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57743 # 0xe18f
+featureTag = 'dlig'
+sequence = "-<<<"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57744 # 0xe190
+featureTag = 'dlig'
+sequence = "--<<<"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57745 # 0xe191
+featureTag = 'dlig'
+sequence = "<="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57746 # 0xe192
+featureTag = 'dlig'
+sequence = "=<="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57747 # 0xe193
+featureTag = 'dlig'
+sequence = "==<="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57748 # 0xe194
+featureTag = 'dlig'
+sequence = "<<="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57749 # 0xe195
+featureTag = 'dlig'
+sequence = "=<<="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57750 # 0xe196
+featureTag = 'dlig'
+sequence = "==<<="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57751 # 0xe197
+featureTag = 'dlig'
+sequence = "<<<="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57752 # 0xe198
+featureTag = 'dlig'
+sequence = "=<<<="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57753 # 0xe199
+featureTag = 'dlig'
+sequence = "==<<<="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57754 # 0xe19a
+featureTag = 'dlig'
+sequence = "<=="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57755 # 0xe19b
+featureTag = 'dlig'
+sequence = "=<=="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57756 # 0xe19c
+featureTag = 'dlig'
+sequence = "==<=="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57757 # 0xe19d
+featureTag = 'dlig'
+sequence = "<<=="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57758 # 0xe19e
+featureTag = 'dlig'
+sequence = "=<<=="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57759 # 0xe19f
+featureTag = 'dlig'
+sequence = "==<<=="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57760 # 0xe1a0
+featureTag = 'dlig'
+sequence = "<<<=="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57761 # 0xe1a1
+featureTag = 'dlig'
+sequence = "=<<<=="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57762 # 0xe1a2
+featureTag = 'dlig'
+sequence = "==<<<=="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57763 # 0xe1a3
+featureTag = 'dlig'
+sequence = "=<"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57764 # 0xe1a4
+featureTag = 'dlig'
+sequence = "==<"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57765 # 0xe1a5
+featureTag = 'dlig'
+sequence = "=<<"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57766 # 0xe1a6
+featureTag = 'dlig'
+sequence = "==<<"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57767 # 0xe1a7
+featureTag = 'dlig'
+sequence = "=<<<"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57768 # 0xe1a8
+featureTag = 'dlig'
+sequence = "==<<<"
+
+# -----------------------------------------
+# Monadic operators
+# -----------------------------------------
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57769 # 0xe1a9
+featureTag = 'dlig'
+sequence = ">=>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57770 # 0xe1aa
+featureTag = 'dlig'
+sequence = ">->"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57771 # 0xe1ab
+featureTag = 'dlig'
+sequence = ">-->"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57772 # 0xe1ac
+featureTag = 'dlig'
+sequence = ">==>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57773 # 0xe1ad
+featureTag = 'dlig'
+sequence = "<=<"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57774 # 0xe1ae
+featureTag = 'dlig'
+sequence = "<-<"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57775 # 0xe1af
+featureTag = 'dlig'
+sequence = "<--<"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57776 # 0xe1b0
+featureTag = 'dlig'
+sequence = "<==<"
+
+# -----------------------------------------
+# Composition operators
+# -----------------------------------------
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57777 # 0xe1b1
+featureTag = 'dlig'
+sequence = ">>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57778 # 0xe1b2
+featureTag = 'dlig'
+sequence = ">>>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57779 # 0xe1b3
+featureTag = 'dlig'
+sequence = "<<"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57780 # 0xe1b4
+featureTag = 'dlig'
+sequence = "<<<"
+
+# -----------------------------------------
+# Lens operators
+# -----------------------------------------
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57781 # 0xe1b5
+featureTag = 'dlig'
+sequence = ":+"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57782 # 0xe1b6
+featureTag = 'dlig'
+sequence = ":-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57783 # 0xe1b7
+featureTag = 'dlig'
+sequence = ":="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57784 # 0xe1b8
+featureTag = 'dlig'
+sequence = "+:"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57785 # 0xe1b9
+featureTag = 'dlig'
+sequence = "-:"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57786 # 0xe1ba
+featureTag = 'dlig'
+sequence = "=:"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57787 # 0xe1bb
+featureTag = 'dlig'
+sequence = "=^"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57788 # 0xe1bc
+featureTag = 'dlig'
+sequence = "=+"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57789 # 0xe1bd
+featureTag = 'dlig'
+sequence = "=-"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57790 # 0xe1be
+featureTag = 'dlig'
+sequence = "=*"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57791 # 0xe1bf
+featureTag = 'dlig'
+sequence = "=/"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57792 # 0xe1c0
+featureTag = 'dlig'
+sequence = "=%"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57793 # 0xe1c1
+featureTag = 'dlig'
+sequence = "^="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57794 # 0xe1c2
+featureTag = 'dlig'
+sequence = "+="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57795 # 0xe1c3
+featureTag = 'dlig'
+sequence = "-="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57796 # 0xe1c4
+featureTag = 'dlig'
+sequence = "*="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57797 # 0xe1c5
+featureTag = 'dlig'
+sequence = "/="
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57798 # 0xe1c6
+featureTag = 'dlig'
+sequence = "%="
+
+# -----------------------------------------
+# Logical
+# -----------------------------------------
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57799 # 0xe1c7
+featureTag = 'dlig'
+sequence = "/\\"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57800 # 0xe1c8
+featureTag = 'dlig'
+sequence = "\\/"
+
+# -----------------------------------------
+# Semigroup/monoid operators
+# -----------------------------------------
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57801 # 0xe1c9
+featureTag = 'dlig'
+sequence = "<>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57802 # 0xe1ca
+featureTag = 'dlig'
+sequence = "<+"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57803 # 0xe1cb
+featureTag = 'dlig'
+sequence = "<+>"
+
+[[buildPlans.iosevka-josevka.compatibility-ligatures]]
+unicode = 57804 # 0xe1cc
+featureTag = 'dlig'
+sequence = "+>"
+
+[buildPlans.iosevka-josevka-mono]
+family = "Josevka Mono"
+spacing = "fontconfig-mono"
+serifs = "sans"
+no-cv-ss = true
+no-ligation = true
+
+  [buildPlans.iosevka-josevka-mono.variants]
+  inherits = "buildPlans.josevka"
+
+  [buildPlans.iosevka-josevka-mono.ligations]
+  inherits = "dlig"
+
+[buildPlans.iosevka-josevka-mono.weights.light]
+shape = 300
+menu = 300
+css = 300
+
+[buildPlans.iosevka-josevka-mono.weights.regular]
+shape = 400
+menu = 400
+css = 400
+
+[buildPlans.iosevka-josevka-mono.weights.medium]
+shape = 500
+menu = 500
+css = 500
+
+[buildPlans.iosevka-josevka-mono.weights.bold]
+shape = 700
+menu = 700
+css = 700
+
+[buildPlans.iosevka-josevka-mono.widths.normal]
+shape = 525
+menu = 5
+css = "normal"
+
+[buildPlans.iosevka-josevka-mono.slopes.upright]
+angle = 0
+shape = "upright"
+menu = "upright"
+css = "normal"
+
+[buildPlans.iosevka-josevka-mono.slopes.italic]
+angle = 9.4
+shape = "italic"
+menu = "italic"
+css = "italic"
+
+[buildPlans.iosevka-josevka-book-sans]
+family = "Josevka Book Sans"
+spacing = "quasi-proportional"
+serifs = "sans"
+no-cv-ss = true
+export-glyph-names = true
+
+
+ [buildPlans.iosevka-josevka-book-sans.variants]
+  inherits = "ss03"
+
+    [buildPlans.iosevka-josevka-book-sans.variants.design]
+    b = "toothless-rounded"
+    f = "flat-hook-crossbar-at-x-height"
+    g = "single-storey-serifless"
+    i = "serifless"
+    k = "symmetric-connected-serifless"
+    l = "serifless"
+    t = "flat-hook-short-neck"
+    capital-j = "serifless"
+    lower-alpha = "crossing"
+    four = "semi-open-non-crossing"
+    dollar = "open"
+    cent = "open"
+    percent = "rings-continuous-slash"
+    question = "corner"
+
+[buildPlans.iosevka-josevka-book-sans.ligations]
+inherits = "dlig"
+
+[buildPlans.iosevka-josevka-book-sans.widths.normal]
+shape = 600
+menu = 5
+css = "normal"
+
+[buildPlans.iosevka-josevka-book-sans.slopes.upright]
+angle = 0
+shape = "upright"
+menu = "upright"
+css = "normal"
+
+[buildPlans.iosevka-josevka-book-sans.slopes.italic]
+angle = 9.4
+shape = "italic"
+menu = "italic"
+css = "italic"
+
+[[buildPlans.iosevka-josevka-book-sans.compatibility-ligatures]]
+unicode = 57633 # 0xe121
+featureTag = 'dlig'
+sequence = "\">"
+
+[buildPlans.iosevka-josevka-book-slab]
+family = "Josevka Book Slab"
+spacing = "quasi-proportional"
+serifs = "slab"
+no-cv-ss = true
+export-glyph-names = true
+
+[buildPlans.iosevka-josevka-book-slab.variants]
+  inherits = "ss03"
+
+    [buildPlans.iosevka-josevka-book-slab.variants.design]
+    a = "double-storey-tailed"
+    b = "toothed-motion-serifed"
+    c = "bilateral-serifed"
+    d = "tailed-serifed"
+    g = "single-storey-flat-hook-serifed"
+    t = "flat-hook"
+    capital-a = "curly-base-serifed"
+    capital-j = "serifed-both-sides"
+    capital-t = "serifed"
+    one = "base"
+    three = "flat-top"
+    ascii-single-quote = "raised-comma"
+    #ascii-grave = "raised-turn-comma"
+
+    [buildPlans.iosevka-josevka-book-slab.variants.italic]
+    e = "rounded"
+    k = "symmetric-touching-serifed"
+    x = "straight-serifed"
+
+  [buildPlans.iosevka-josevka-book-slab.ligations]
+  inherits = "dlig"
+
+[buildPlans.iosevka-josevka-book-slab.widths.normal]
+shape = 600
+menu = 5
+css = "normal"
+
+[buildPlans.iosevka-josevka-book-slab.slopes.upright]
+angle = 0
+shape = "upright"
+menu = "upright"
+css = "normal"
+
+[buildPlans.iosevka-josevka-book-slab.slopes.italic]
+angle = 9.4
+shape = "italic"
+menu = "italic"
+css = "italic"
+#+end_src
+
+
+** Nix Configuration
+Since I am using flakes with NixOS, I need to enable that in my configuration. In addition, I also want to improve garbage collection.
+#+begin_src nix :tangle system/flakes.nix
+{ config, lib, pkgs, ... }:
+
+{
+  nix = {
+      gc = {
+        automatic = true;
+        dates = "daily";
+      };
+      settings = {
+        auto-optimise-store = true;
+      };
+       extraOptions = ''
+        experimental-features = nix-command flakes
+      '';
+    };
+
+    nixpkgs.config.allowUnfree = true;
+}
+
+#+end_src
+
+** Networking
+#+begin_src nix :tangle system/networking_i18n.nix
+{ config, lib, pkgs, ... }:
+
+{
+  # Pick only one of the below networking options.
+  # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
+  networking.useDHCP = false;
+  networking.networkmanager.enable = true;  # Easiest to use and most distros use this by default.
+  time.timeZone = "America/New_York";
+  i18n.defaultLocale = "en_US.UTF-8";
+  console = {
+    font = "Lat2-Terminus16";
+    keyMap = "us";
+    #useXkbConfig = true; # use xkbOptions in tty.
+  };
+  programs.nm-applet.enable = true;
+}
+
+#+end_src
+
+** Development
+#+begin_src nix :tangle system/devel.nix
+{ config, lib, pkgs, ... }:
+{
+  programs.neovim = {
+    #enable = true;
+    vimAlias = true;
+    viAlias = true;
+  #  defaultEditor = true;
+};
+
+  environment.shells = with pkgs; [
+    zsh
+    bashInteractive
+    fish
+  ];
+  programs.fish.enable = true;
+  programs.zsh = {
+    enable = true;
+    autosuggestions.enable = true;
+  };
+}
+
+#+end_src
+
+** Users
+#+begin_src nix :tangle system/users.nix
+{ config, lib, pkgs, ... }:
+{
+  services.accounts-daemon.enable = true;
+      # Define a user account. Don't forget to set a password with ‘passwd’.
+  users.defaultUserShell = pkgs.fish;
+  users.users.jhilker = {
+      isNormalUser = true;
+      isSystemUser = false;
+      extraGroups = [ "wheel" "networkmanager"]; # Enable ‘sudo’ for the user.
+      initialPassword = "jhilker";
+      shell = pkgs.fish;
+      home = "/home/jhilker";
+        #uid = 999; ## was used for lightdm issue
+  };
+}
+#+end_src
+
+** Security
+#+begin_src nix
+{ config, lib, pkgs, ... }:
+{
+  programs.gnupg.agent = {
+      enable = true;
+      enableSSHSupport = true;
+      pinentryFlavor = "gtk2";
+    };
+
+  security.sudo.enable = false;
+  security.doas = {
+    enable = true;
+    extraRules = [{
+      users = ["jhilker"];
+      keepEnv = true;
+      persist = true;
+    }];
+  };
+  #environment.shellAliases.sudo = "doas $argv";
+
+  security.pam.services = {
+    sddm.enableKwallet = true;
+  };
+}
+
+#+end_src
+
+* Packages
+:properties:
+:export_hugo_section: packages/
+:end:
+** SDDM Themes
+*** Clairvoiyance
+#+begin_src nix :tangle packages/sddmThemes/clairvoyance.nix
+{ stdenv, fetchFromGitHub, lib, autoFocusPassword ? false, backgroundURL ? null, enableHDPI ? false, fileType ? "jpg" }:
+let boolToStr = b: if b then "true" else "false";
+    autoFocusPassword' = boolToStr autoFocusPassword;
+    enableHDPI' = boolToStr enableHDPI;
+    background = "Assets/Background." + fileType;
+    themeConfig = builtins.toFile "theme.conf" ''
+      [General]
+      background=${background}
+      autoFocusPassword=${autoFocusPassword'}
+      enableHDPI=${enableHDPI'}
+    '';
+
+in stdenv.mkDerivation rec {
+  name = "sddm-clairvoyance";
+  src = fetchFromGitHub {
+    owner = "eayus";
+    repo = "sddm-theme-clairvoyance";
+    rev = "fb0210303f67325162a5f132b6a3f709dcd8e181";
+    sha256 = "17hwh0ixnn5d9dbl1gaygbhb1zv4aamqkqf70pcgq1h9124mjshj";
+  };
+
+  installPhase = ''
+    mkdir -p $out/share/sddm/themes/clairvoyance
+    cp -r * $out/share/sddm/themes/clairvoyance
+    cp ${themeConfig} $out/share/sddm/themes/clairvoyance/theme.conf
+    ${if backgroundURL == null then "" else "cp ${builtins.fetchurl backgroundURL} $out/share/sddm/themes/clairvoyance/${background}"}
+ '';
+
+  meta = with lib; {
+    description = "eayus' sddm theme";
+    homepage = https://github.com/eayus/sddm-theme-clairvoyance;
+    platforms = platforms.linux;
+  };
+}
+#+end_src
+
+*** Sugar-Dark
+#+begin_src nix :tangle packages/sddmThemes/sugarDark.nix
+{ stdenv, fetchFromGitHub }:
+{
+  sddm-sugar-dark = stdenv.mkDerivation rec {
+    pname = "sddm-sugar-dark-theme";
+    version = "1.2";
+    dontBuild = true;
+    installPhase = ''
+      mkdir -p $out/share/sddm/themes
+      cp -aR $src $out/share/sddm/themes/sugar-dark/
+    '';
+    src = fetchFromGitHub {
+      owner = "MarianArlt";
+      repo = "sddm-sugar-dark";
+      rev = "v${version}";
+      sha256 = "0gx0am7vq1ywaw2rm1p015x90b75ccqxnb1sz3wy8yjl27v82yhb";
+    };
+  };
+}
+#+end_src
+
+** Libby
+#+begin_src nix :tangle packages/libby/default.nix
+{ stdenv
+, lib
+, fetchFromGitHub
+, bash
+, fzf
+, rofi
+, subversion
+, makeWrapper
+}:
+  stdenv.mkDerivation {
+    pname = "libby";
+    version = "1d30163";
+    src = fetchFromGitHub {
+      # https://github.com/Decad/github-downloader
+      owner = "carterprince";
+      repo = "libby";
+      rev = "1d30163ca0489404f975d75ab50f7c214e6942b5";
+      sha256 = "wZ/ILyA+mV3avLCltYm+Coj67Jfn0Lt5b4q05Ixh6J0=";
+    };
+    buildInputs = [ bash subversion fzf rofi];
+    nativeBuildInputs = [ makeWrapper ];
+    installPhase = ''
+      mkdir -p $out/bin
+      cp libby $out/bin/libby
+      wrapProgram $out/bin/libby \
+        --prefix PATH : ${lib.makeBinPath [ bash subversion ]}
+    '';
+  }
+#+end_src
+
+
+* Home
+** Default Module :noexport:
+#+begin_src nix :tangle home/default.nix
+{ config, pkgs, lib, nixvim, nix-colors,inputs, ... }:
+{
+  home.username = "jhilker";
+  home.homeDirectory = "/home/jhilker";
+  home.stateVersion = "22.11";
+
+  imports = [
+    ./gtk
+    ./desktop
+    ./devel
+    ./media
+    nix-colors.homeManagerModule
+  ];
+
+  colorScheme = nix-colors.colorSchemes.gruvbox-dark-hard;
+
+  programs.home-manager.enable = true;
+  home.packages = with pkgs; [
+     texlive.combined.scheme-full
+        auctex
+        zlib
+        (python39.withPackages(p: with p; [
+          fontforge
+          numpy
+          pandas
+          flask
+          virtualenvwrapper
+          pip
+          httpx
+        ]))
+        nodePackages.pyright
+        nodejs
+        nodePackages.npm
+        nodePackages.tailwindcss
+        nodePackages.postcss-cli
+        nodePackages.typescript
+        nodePackages.degit
+        rustc
+        cargo
+        go
+        thefuck
+        jq
+        pup
+        #libby
+        gcc
+        binutils
+        (ripgrep.override { withPCRE2 = true; })
+        gnutls
+        fd
+        imagemagick
+        zstd
+        nodePackages.javascript-typescript-langserver
+        sqlite
+        editorconfig-core-c
+        emacs-all-the-icons-fonts
+        hugo
+        nix-prefetch-git
+    ];
+
+    nixpkgs.overlays = [
+      (
+        self: super: {
+          libby = super.callPackage ../packages/libby/default.nix {};
+        }
+      )
+    ];
+  programs.gpg.enable = true;
+  services.gpg-agent = {
+    enable = true;
+    pinentryFlavor = "gtk2";
+    enableBashIntegration = true;
+    enableZshIntegration = true;
+    enableSshSupport = true;
+    defaultCacheTtl = 86400;
+    defaultCacheTtlSsh = 86400;
+  };
+  programs.keychain = {
+    enable = true;
+    keys = [
+        "id_ed25519"
+    ];
+  };
+
+
+
+    xresources = {
+      extraConfig = ''
+        ! ${config.colorScheme.slug} !
+        #define bg #${config.colorScheme.colors.base00}
+        #define bgBright #${config.colorScheme.colors.base02}
+        #define fg #${config.colorScheme.colors.base06}
+        #define red #${config.colorScheme.colors.base08}
+        #define orange #${config.colorScheme.colors.base09}
+        #define yellow #${config.colorScheme.colors.base0A}
+        #define green #${config.colorScheme.colors.base0B}
+        #define teal #${config.colorScheme.colors.base0C}
+        #define blue #${config.colorScheme.colors.base0D}
+        #define purple #${config.colorScheme.colors.base0E}
+        #define brown #${config.colorScheme.colors.base0F}
+      '';
+      properties = {
+        "*.background" = "bg";
+        "*.foreground" = "fg";
+      };
+    };
+}
+#+end_src
+
+** Desktop
+:properties:
+:export_hugo_section: desktop/
+:end:
+*** Default Module :noexport:
+#+begin_src nix
+{ pkgs, config, nix-colors,...}:
+{
+  imports = [
+    ./rofi
+    ./qtile
+    ./awesome
+  ];
+
+  services.dunst = {
+    enable = true;
+    iconTheme = {
+      name = "Paper";
+      package = pkgs.paper-icon-theme;
+    };
+    settings = {
+      global = {
+        width = 200;
+        height = 200;
+        font = "Josevka 10";
+        origin = "bottom-right";
+        offset = "10x50";
+        format = "%a\n<i>%s</i>\n%b";
+        align = "right";
+      };
+
+      urgency_normal = {
+        background = "#${config.colorScheme.colors.base00}";
+        foreground = "#${config.colorScheme.colors.base06}";
+      };
+      urgency_critical = {
+        background = "#${config.colorScheme.colors.base08}";
+        foreground = "#${config.colorScheme.colors.base07}";
+        frame_color = "#${config.colorScheme.colors.base01}";
+      };
+
+    };
+  };
+   }
+#+end_src
+
+*** Awesome
+*** Qtile
+
+*** Rofi
+*** Picom
+
+*** GTK Theme
+#+begin_src nix :tangle home/gtk/default.nix
+{config, pkgs, nix-colors, ...}:
+let
+  inherit (nix-colors.lib-contrib { inherit pkgs; }) gtkThemeFromScheme;
+in {
+  gtk = {
+   enable = true;
+   theme = {
+    name = "${config.colorscheme.slug}";
+    package = gtkThemeFromScheme { scheme = config.colorscheme; };
+    };
+    iconTheme = {
+	name = "Paper";
+	package = pkgs.paper-icon-theme;
+    };
+ };
+}
+#+end_src
+
+
+** Media
+#+begin_src nix :tangle home/media/default.nix
+{ config, lib, pkgs, ... }:
+
+{
+  programs.zathura = {
+   enable = true;
+  };
+
+  programs.ncspot = {
+    enable = true;
+  };
+
+}
+#+end_src
+
+** Development Environment
+*** Default Module :noexport:
+#+begin_src nix :tangle home/devel/default.nix
+{config, lib, pkgs, ...}:
+{
+  imports = [
+    ./git.nix
+    ./nvim.nix
+  ];
+
+  programs.emacs.enable = true;
+  services.emacs.enable = true;
+  xdg.configFile."doom" = {
+    source = ./config/doom;
+    recursive = true;
+  };
+
+  home.sessionVariables."DOOMDIR" = "$HOME/.dotfiles/home/devel/config/doom";
+
+
+  programs.neovim = {
+    vimAlias = true;
+    viAlias = true;
+  };
+
+  programs.fish.enable = true;
+  programs.bash = {
+    enable = true;
+    shellAliases = {
+      ref = "source ~/.bashrc";
+    };
+  };
+
+  programs.zsh = {
+    enable = true;
+    enableSyntaxHighlighting = true;
+    enableAutosuggestions = true;
+    autocd = true;
+    dotDir = "config/zsh";
+    plugins = [
+      {
+        name = "fzf-marks";
+        src = pkgs.fetchFromGitHub {
+          owner = "urbainvaes";
+          repo = "fzf-marks";
+          rev = "ff3307287bba5a41bf077ac94ce636a34ed56d32";
+          sha256 = "12bln3pqznj4x906cxv9n9qb0m3wry8lrspqqc8b6jklydwg9b3v";
+        };
+        file = "fzf-marks.plugin.zsh";
+      }
+    ];
+
+    shellAliases = {
+      ref = "source ~/config/zsh/.zshrc";
+    };
+    initExtra = ''
+      eval $(${pkgs.thefuck}/bin/thefuck --alias)
+    '';
+
+    dirHashes = {
+      dotfiles= "$HOME/.dotfiles/";
+      org = "$HOME/Dropbox/org/";
+      roam = "$HOME/Dropbox/roam/";
+      cetragore = "$HOME/Devel/sites/cetragore";
+    };
+  };
+
+  programs.starship = {
+    enable = true;
+    enableBashIntegration = true;
+    enableZshIntegration = true;
+    enableFishIntegration = true;
+    settings = {
+      line_break.disabled = true;
+    };
+  };
+
+  programs.fzf = {
+    enable = true;
+    enableBashIntegration = true;
+    enableZshIntegration = true;
+    enableFishIntegration = true;
+    tmux.enableShellIntegration = true;
+  };
+
+programs.alacritty = {
+    enable = true;
+    settings = {
+      opacity = 0.8;
+    };
+  };
+
+  programs.foot = {
+    enable = true;
+    settings = {
+
+    };
+  };
+}
+#+end_src
+
+**** Git
+#+begin_src nix :tangle home/devel/git.nix
+{ config, lib, pkgs, ... }:
+
+let
+  # Fix any corruptions in the local copy.
+  myGitFix = pkgs.writeShellScriptBin "git-fix" ''
+    if [ -d .git/objects/ ]; then
+      find .git/objects/ -type f -empty | xargs rm -f
+      git fetch -p
+      git fsck --full
+    fi
+    exit 1
+  '';
+in {
+  home.packages = [ myGitFix ];
+  programs.git = {
+    enable = true;
+    userName = "Jacob Hilker";
+    userEmail = "jacob.hilker2@gmail.com";
+    signing = {
+      key = "jacob.hilker2@gmail.com";
+      signByDefault = true;
+    };
+    delta.enable = true;
+    extraConfig = {
+      init.defaultBranch = "main";
+      core = {
+        editor = "nvim";
+      };
+    };
+  };
+}
+#+end_src
+
+
+**** Neovim
+#+begin_src nix :tangle
+{ config, lib, pkgs, nix-colors, nixvim, ... }:
+let
+  inherit (nix-colors.lib-contrib { inherit pkgs; }) vimThemeFromScheme;
+in {
+  programs.nixvim = {
+    enable = true;
+    options = {
+      number = true;         # Show line numbers
+      relativenumber = true; # Show relative line numbers
+      shiftwidth = 2;        # Tab width should be 2
+    };
+    globals = {
+      mapleader = " ";
+    };
+    maps = {
+      #normalVisualOp." " = ":";
+      normal."<leader>gg" = {
+        silent = true;
+        action = "<cmd>Git<CR>";
+      };
+    };
+
+    extraPlugins = with pkgs.vimPlugins; [
+      vim-nix
+      vim-fugitive
+      nvim-autopairs
+      #{
+      #  plugin = vimThemeFromScheme { scheme = config.colorScheme; };
+      #  config = "colorscheme ${config.colorScheme.slug}";
+      #}
+    ];
+
+    colorschemes.base16 = {
+      enable = true;
+      useTruecolor = true;
+      colorscheme = lib.toLower config.colorScheme.slug;
+    };
+  };
+}
+#+end_src
+
+
+** Misc. Utilities
+*** WSL
+#+begin_src nix :tangle home/utils/wsl.nix
+{config, lib, pkgs, nix-colors, ...}:
+{
+  home.sessionVariables."WSLHOME" = "/mnt/c/Users/camoh/";
+  programs.zsh.initExtra = ''
+    . "$HOME/.nix-profile/etc/profile.d/nix.sh"
+    '';
+}
+#+end_src
