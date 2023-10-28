@@ -13,7 +13,7 @@ no-cv-ss = true
 
     b = "toothed-serifless"
     d = "tailed-serifless"
-    f = "flat-hook-crossbar-at-x-height"
+    f = "flat-hook-serifless-crossbar-at-x-height"
     g = "single-storey-flat-hook-serifless"
     k = "symmetric-connected-serifless"
     q = "tailed-serifless"
@@ -30,10 +30,10 @@ no-cv-ss = true
     l = "tailed-serifed"
     q = "diagonal-tailed-serifless"
 
-[buildPlans.iosevka-josevka.weights.light]
-shape = 300
-menu = 300
-css = 300
+[buildPlans.iosevka-josevka.weights.normal]
+shape = 400
+menu = 400
+css = 400
 
 [buildPlans.iosevka-josevka.slopes.upright]
 angle = 0
