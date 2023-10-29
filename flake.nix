@@ -126,7 +126,7 @@
           overlays = [ self.overlays.default ];
         };
       in {
-        packages = {
+        packages = rec {
           inherit (pkgs) iosevka josevka;
           default = pkgs.josevka;
         };
