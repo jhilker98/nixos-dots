@@ -46,11 +46,11 @@ shape = "upright"
 menu = "upright"
 css = "normal"
 
-#[buildPlans.iosevka-josevka.slopes.italic]
-#angle = 9.4
-#shape = "italic"
-#menu = "italic"
-#css = "italic"
+[buildPlans.iosevka-josevka.slopes.italic]
+angle = 9.4
+shape = "italic"
+menu = "italic"
+css = "italic"
 
 [buildPlans.iosevka-josevka.widths.normal]
 shape = 550
