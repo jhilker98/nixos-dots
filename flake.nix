@@ -25,110 +25,97 @@
       inputs.systems.follows = "systems";
     };
   };
-  outputs = { self, nixpkgs, home-manager, home-manager-wsl, stylix, nix-colors, base16-schemes, nix-wallpaper, utils, ... }@inputs:
+  outputs = { self, nixpkgs, home-manager, home-manager-wsl, stylix, nix-colors
+    , base16-schemes, nix-wallpaper, utils, ... }@inputs:
     {
 
-
-      nixosConfigurations =
-        let system = "x86_64-linux";
-            lib = nixpkgs.lib;
-            pkgs = import nixpkgs {
-              inherit system;
-              overlays = [ self.overlays.default ];
-            };
-            baseConfig = {
-              inherit system;
-              specialArgs = { inherit self inputs nix-colors; };
-              modules = [ ./system
-                          stylix.nixosModules.stylix ./system
-                          home-manager.nixosModules.home-manager {
-                            home-manager = {
-                              useGlobalPkgs = true;
-                              useUserPackages = true;
-                              extraSpecialArgs = { inherit nix-colors; };
-                              users.jhilker = {
-                                imports = [
-                                  ./home
-                                  inputs.nixvim.homeManagerModules.nixvim
-                                ];
-                              };
-                            };
-                          }
-                        ];
-            };
-        in {
-          virtualbox = lib.nixosSystem {
-            inherit (baseConfig) system specialArgs;
-            modules = baseConfig.modules ++ [
-              ./hosts/virtualbox.nix
-              home-manager.nixosModules.home-manager {
-                home-manager.users.jhilker.imports = [
-                  ./home/desktop
-                ];
-              }
-
-            ];
-          };
-          vmware = lib.nixosSystem {
-            inherit (baseConfig) system specialArgs;
-            modules = baseConfig.modules ++ [
-              ./hosts/vmware.nix
-              home-manager.nixosModules.home-manager {
-                home-manager.users.jhilker.imports = [
-                  ./home/desktop
-                  ./home/desktop/picom.nix
-                ];
-              }
-            ];
-          };
-          netbook = lib.nixosSystem {
-            inherit (baseConfig) system specialArgs;
-            modules = baseConfig.modules ++ [
-              ./hosts/netbook.nix
-              ./system/audio
-              home-manager.nixosModules.home-manager {
-                home-manager.users.jhilker.imports = [
-                  ./home/desktop
-                  ./home/desktop/picom.nix
-                ];
-              }
-            ];
-          };
-        };
-
-      homeConfigurations = {
-          wsl = home-manager.lib.homeManagerConfiguration {
-            pkgs = nixpkgs.legacyPackages.x86_64-linux;
-            modules = [
-              ./home
-              ./home/utils/wsl.nix
-              home-manager-wsl.homeModules.default
-              { wsl.baseDistro = "ubuntu"; }
-
-            inputs.nixvim.homeManagerModules.nixvim
-            stylix.homeManagerModules.stylix
-            ./home
-            ];
-            extraSpecialArgs = { inherit nix-colors; };
-          };
-            };
-      overlays.default = final: prev:
-        let
-          pkgs = nixpkgs.legacyPackages.${prev.system};
-        in {
-          inherit (pkgs) iosevka;
-          josevka = pkgs.iosevka.override { privateBuildPlan = builtins.readFile ./utils/stylix/josevka.toml; set = "josevka"; };
-        };
-    } // utils.lib.eachDefaultSystem (system:
-      let
+      nixosConfigurations = let
+        system = "x86_64-linux";
+        lib = nixpkgs.lib;
         pkgs = import nixpkgs {
           inherit system;
           overlays = [ self.overlays.default ];
         };
+        baseConfig = {
+          inherit system;
+          specialArgs = { inherit self inputs nix-colors; };
+          modules = [
+            ./system
+            stylix.nixosModules.stylix
+            ./system
+            home-manager.nixosModules.home-manager
+            {
+              home-manager = {
+                useGlobalPkgs = true;
+                useUserPackages = true;
+                extraSpecialArgs = { inherit nix-colors; };
+                users.jhilker = {
+                  imports = [ ./home inputs.nixvim.homeManagerModules.nixvim ];
+                };
+              };
+            }
+          ];
+        };
+      in {
+        virtualbox = lib.nixosSystem {
+          inherit (baseConfig) system specialArgs;
+          modules = baseConfig.modules ++ [
+            ./hosts/virtualbox.nix
+            home-manager.nixosModules.home-manager
+            { home-manager.users.jhilker.imports = [ ./home/desktop ]; }
+
+          ];
+        };
+        vmware = lib.nixosSystem {
+          inherit (baseConfig) system specialArgs;
+          modules = baseConfig.modules ++ [
+            ./hosts/vmware.nix
+            home-manager.nixosModules.home-manager
+            {
+              home-manager.users.jhilker.imports =
+                [ ./home/desktop ./home/desktop/picom.nix ];
+            }
+          ];
+        };
+        netbook = lib.nixosSystem {
+          inherit (baseConfig) system specialArgs;
+          modules = baseConfig.modules ++ [
+            ./hosts/netbook.nix
+            ./system/audio
+            home-manager.nixosModules.home-manager
+            {
+              home-manager.users.jhilker.imports =
+                [ ./home/desktop ./home/desktop/picom.nix ];
+            }
+          ];
+        };
+      };
+
+      homeConfigurations = {
+        wsl = home-manager.lib.homeManagerConfiguration {
+          pkgs = nixpkgs.legacyPackages.x86_64-linux;
+          modules = [
+            ./home
+            ./home/utils/wsl.nix
+            home-manager-wsl.homeModules.default
+            { wsl.baseDistro = "ubuntu"; }
+
+            inputs.nixvim.homeManagerModules.nixvim
+            stylix.homeManagerModules.stylix
+            ./home
+          ];
+          extraSpecialArgs = { inherit nix-colors; };
+        };
+      };
+    } // utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = nixpkgs.legacyPackages.${system};
       in {
         packages = rec {
-          inherit (pkgs) iosevka josevka;
-          default = pkgs.josevka;
+          josevka = pkgs.iosevka.override {
+            privateBuildPlan = builtins.readFile ./utils/stylix/josevka.toml;
+            set = "josevka";
+          };
         };
       });
 }
