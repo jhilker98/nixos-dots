@@ -27,7 +27,7 @@ jobs:
       uses: ncipollo/release-action@v1
       with:
         artifacts: "*.zip"
-        tag: ${{ env.RELEASE_VER }}
+        tag: ${{ env.SHORT_SHA }}
         body: ${{ env.GIT_COMMIT_MESSAGE_BODY }}
         commit: ${{ github.event.head_commit.id }}
         token: ${{ secrets.GITHUB_TOKEN }}
