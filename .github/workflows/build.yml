@@ -14,4 +14,4 @@ jobs:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
     - name: "Build Josevka"
       run: nix build -L .#josevka --cores 2
-    - run: ls -alh .
+    - run: ls -alh ./result
