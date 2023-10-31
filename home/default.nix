@@ -5,21 +5,25 @@
   home.stateVersion = "22.11";
 
   nixpkgs.config.allowUnfree = true;
-  imports = [ nix-colors.homeManagerModule ../utils/stylix ./modules/services/drink-water.nix];
+  imports = [
+    nix-colors.homeManagerModule
+    ../utils/stylix
+    ./modules/services/drink-water.nix
+  ];
   colorScheme = nix-colors.colorSchemes.gruvbox-dark-hard;
 
   programs.home-manager.enable = true;
   home.packages = let
     extraNodePkgs = pkgs.callPackage ../packages/node { };
-    extraPythonPkgs = pkgs.callPackage ../packages/python {  };
+    extraPythonPkgs = pkgs.callPackage ../packages/python { };
     # Fix any corruptions in the local copy.
     myGitFix = pkgs.writeShellScriptBin "git-fix" ''
-    if [ -d .git/objects/ ]; then
-    find .git/objects/ -type f -empty | xargs rm -f
-    git fetch -p
-    git fsck --full
-    fi
-    exit 1
+      if [ -d .git/objects/ ]; then
+      find .git/objects/ -type f -empty | xargs rm -f
+      git fetch -p
+      git fsck --full
+      fi
+      exit 1
     '';
   in with pkgs; [
     extraNodePkgs.tailwindcss-document-cli
@@ -40,6 +44,7 @@
       ]))
     extraPythonPkgs.bibulous
     wakatime
+    ttfautohint
     nodePackages.pyright
     nodejs
     nodePackages.npm
@@ -100,9 +105,7 @@
     userDirs = {
       enable = true;
       createDirectories = true;
-      extraConfig = {
-        XDG_PROJECT_DIR = "${config.home.homeDirectory}/Devel";
-      };
+      extraConfig = { XDG_PROJECT_DIR = "${config.home.homeDirectory}/Devel"; };
     };
   };
 
@@ -139,7 +142,7 @@
         toIgnore="$(curl -sLw "\n" https://www.toptal.com/developers/gitignore/api/list | sed 's/,/\n/g' | fzf -m | xargs | sed 's/\s/,/g')"
         curl -sL "https://www.toptal.com/developers/gitignore/api/$toIgnore" >> .gitignore
       }
-      '';
+    '';
   };
 
   programs.emacs = {
@@ -171,27 +174,16 @@
     };
     delta.enable = true;
     extraConfig = {
-      init = {
-        defaultBranch = "main";
-      };
-      core = {
-        editor = "nvim";
-      };
-      push = {
-        autoSetupRemote = true;
-      };
-      color = {
-        ui = true;
-      };
+      init = { defaultBranch = "main"; };
+      core = { editor = "nvim"; };
+      push = { autoSetupRemote = true; };
+      color = { ui = true; };
       format = {
-        pretty = "%C(italic)(%h)%Creset %C(bold 12)%an%Creset: %C(3)%s %Creset(%ad)";
+        pretty =
+          "%C(italic)(%h)%Creset %C(bold 12)%an%Creset: %C(3)%s %Creset(%ad)";
       };
     };
-    ignores = [
-      "result"
-      "result-*"
-      "node_modules/"
-    ];
+    ignores = [ "result" "result-*" "node_modules/" ];
   };
 
   programs.neovim = {
@@ -212,33 +204,34 @@
       FindInFile = {
         bang = true;
         nargs = "*";
-        command = "call fzf#vim#grep(\"rg --column --no-heading --color=always --smart-case \".shellescape(<q-args>), 1, {'options': '--delimiter : --nth 4..'}, <bang>0)";
+        command = ''
+          call fzf#vim#grep("rg --column --no-heading --color=always --smart-case ".shellescape(<q-args>), 1, {'options': '--delimiter : --nth 4..'}, <bang>0)'';
       };
     };
     extraPlugins = with pkgs.vimPlugins; [ nvim-fzf nvim-fzf-commands fzf-vim ];
     colorschemes.base16 = let colors = config.lib.stylix.colors;
-                          in {
-                            enable = true;
-                            colorscheme = colors.scheme-slug;
-                            customColorScheme = {
-                              base00 = "#${colors.base00}";
-                              base01 = "#${colors.base01}";
-                              base02 = "#${colors.base02}";
-                              base03 = "#${colors.base03}";
-                              base04 = "#${colors.base04}";
-                              base05 = "#${colors.base05}";
-                              base06 = "#${colors.base06}";
-                              base07 = "#${colors.base07}";
-                              base08 = "#${colors.base08}";
-                              base09 = "#${colors.base09}";
-                              base0A = "#${colors.base0A}";
-                              base0B = "#${colors.base0B}";
-                              base0C = "#${colors.base0C}";
-                              base0D = "#${colors.base0D}";
-                              base0E = "#${colors.base0E}";
-                              base0F = "#${colors.base0F}";
-                            };
-                          };
+    in {
+      enable = true;
+      colorscheme = colors.scheme-slug;
+      customColorScheme = {
+        base00 = "#${colors.base00}";
+        base01 = "#${colors.base01}";
+        base02 = "#${colors.base02}";
+        base03 = "#${colors.base03}";
+        base04 = "#${colors.base04}";
+        base05 = "#${colors.base05}";
+        base06 = "#${colors.base06}";
+        base07 = "#${colors.base07}";
+        base08 = "#${colors.base08}";
+        base09 = "#${colors.base09}";
+        base0A = "#${colors.base0A}";
+        base0B = "#${colors.base0B}";
+        base0C = "#${colors.base0C}";
+        base0D = "#${colors.base0D}";
+        base0E = "#${colors.base0E}";
+        base0F = "#${colors.base0F}";
+      };
+    };
     globals = { mapleader = " "; };
     keymaps = [
       {
@@ -287,9 +280,7 @@
         };
 
       };
-      treesitter = {
-        enable = true;
-      };
+      treesitter = { enable = true; };
       nvim-autopairs.enable = true;
       nix.enable = true;
       surround.enable = true;
@@ -330,19 +321,19 @@
       cat = "${pkgs.bat}/bin/bat -p";
     };
     initExtra = let fzf-tab = pkgs.callPackage ../packages/fzf-tab.nix { };
-                in ''
-          eval $(${pkgs.thefuck}/bin/thefuck --alias)
-          source ${pkgs.python3Packages.virtualenvwrapper}/bin/virtualenvwrapper.sh
-          source ${fzf-tab}/fzf-tab.plugin.zsh
-          source ${config.xdg.dataHome}/fzf/plugins/fzf-marks/fzf-marks.plugin.zsh
-          function gi {
-            toIgnore="$(curl -sLw "\n" https://www.toptal.com/developers/gitignore/api/list | sed 's/,/\n/g' | fzf -m | xargs | sed 's/\s/,/g')"
-            curl -sL "https://www.toptal.com/developers/gitignore/api/$toIgnore" >> .gitignore
-          }
-          function toWorkOn(){
-            workon $(lsvirtualenv -b | fzf)
-          }
-          '';
+    in ''
+      eval $(${pkgs.thefuck}/bin/thefuck --alias)
+      source ${pkgs.python3Packages.virtualenvwrapper}/bin/virtualenvwrapper.sh
+      source ${fzf-tab}/fzf-tab.plugin.zsh
+      source ${config.xdg.dataHome}/fzf/plugins/fzf-marks/fzf-marks.plugin.zsh
+      function gi {
+        toIgnore="$(curl -sLw "\n" https://www.toptal.com/developers/gitignore/api/list | sed 's/,/\n/g' | fzf -m | xargs | sed 's/\s/,/g')"
+        curl -sL "https://www.toptal.com/developers/gitignore/api/$toIgnore" >> .gitignore
+      }
+      function toWorkOn(){
+        workon $(lsvirtualenv -b | fzf)
+      }
+    '';
 
     dirHashes = {
       dotfiles = "$HOME/.dotfiles/";
@@ -394,14 +385,13 @@
 
   programs.password-store = {
     enable = true;
-    package = pkgs.pass.withExtensions (exts: [ exts.pass-otp exts.pass-checkup exts.pass-import ]);
+    package = pkgs.pass.withExtensions
+      (exts: [ exts.pass-otp exts.pass-checkup exts.pass-import ]);
     settings = {
       PASSWORD_STORE_DIR = "${config.xdg.dataHome}/.password-store";
     };
   };
 
-  services.waterNotifier = {
-    enable = true;
-  };
+  services.waterNotifier = { enable = true; };
 
 }
