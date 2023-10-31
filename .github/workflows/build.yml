@@ -14,5 +14,20 @@ jobs:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
     - name: "Build Josevka"
       run: nix build -L .#josevka --cores 2
-    - run: zip -9 josevka-$GITHUB_SHA.zip ./result/share/fonts/truetype/*.ttf 
-    - run: ls
+
+    - name: Create Short Sha
+      run: echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
+
+
+    - run: zip -9 josevka-v$SHORT_SHA.zip ./result/share/fonts/truetype/*.ttf 
+    - name: Expose git commit data
+      uses: rlespinasse/git-commit-data-action@v1
+
+    - name: Release Fonts
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: "*.zip"
+        tag: ${{ env.RELEASE_VER }}
+        body: ${{ env.GIT_COMMIT_MESSAGE_BODY }}
+        commit: ${{ github.event.head_commit.id }}
+        token: ${{ secrets.GITHUB_TOKEN }}
