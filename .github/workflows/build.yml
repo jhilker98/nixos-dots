@@ -6,6 +6,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
     - uses: actions/checkout@v3
     - name: "Install Nix"
@@ -30,4 +33,5 @@ jobs:
         artifacts: "*.zip"
         body: ${{ env.GIT_COMMIT_MESSAGE_BODY }}
         commit: ${{ github.event.head_commit.id }}
+        tag: ${{ env.SHORT_SHA }}
         token: ${{ secrets.GITHUB_TOKEN }}
