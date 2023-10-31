@@ -42,7 +42,8 @@
         # httpx
         pygobject3
       ]))
-    extraPythonPkgs.bibulous
+      extraPythonPkgs.bibulous
+      act
     wakatime
     ttfautohint
     nodePackages.pyright
