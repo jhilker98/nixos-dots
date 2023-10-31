@@ -4,7 +4,7 @@ on:
   branches: 
     - main
 jobs:
-  tests:
+  build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -14,4 +14,5 @@ jobs:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
     - name: "Build Josevka"
       run: nix build -L .#josevka --cores 2
-    - run: ls -alh ./result
+    - run: zip -9 josevka-$GITHUB_SHA.zip ./result/share/fonts/truetype/*.ttf 
+    - run: ls
