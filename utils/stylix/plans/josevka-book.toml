@@ -11,7 +11,7 @@ export-glyph-names = true
     [buildPlans.iosevka-josevka-book-sans.variants.design]
     capital-j = "serifless"
     b = "toothless-rounded-serifless"
-    f = "flat-hook-crossbar-at-x-height"
+    f = "flat-hook-serifless-crossbar-at-x-height"
     g = "single-storey-serifless"
     i = "serifless"
     k = "symmetric-connected-serifless"
@@ -64,7 +64,6 @@ export-glyph-names = true
     b = "toothed-motion-serifed"
     c = "bilateral-serifed"
     d = "tailed-serifed"
-    f = "flat-hook-serifless-crossbar-at-x-height"
     g = "single-storey-flat-hook-serifed"
     t = "flat-hook"
     capital-a = "curly-base-serifed"
