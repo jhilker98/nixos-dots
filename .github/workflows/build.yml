@@ -16,13 +16,19 @@ jobs:
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: "Build Josevka"
-      run: nix build -L .#josevka --cores 2
 
     - name: Create Short Sha
       run: echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
 
-    - run: zip -9 josevka-v$SHORT_SHA.zip ./result/share/fonts/truetype/*.ttf
+    - name: "Build Josevka"
+      run: |
+        nix build -L .#josevka --cores 2
+        zip -9 josevka-$SHORT_SHA.zip ./result/share/fonts/truetype/*.ttf
+
+    - name: "Build Josevka Code"
+      run: |
+        nix build -L .#josevka-code --cores 2
+        zip -9 josevka-code-$SHORT_SHA.zip ./result/share/fonts/truetype/*.ttf
 
     - name: Expose git commit data
       uses: rlespinasse/git-commit-data-action@v1
@@ -35,4 +41,4 @@ jobs:
         commit: ${{ github.event.head_commit.id }}
         tag: ${{ env.SHORT_SHA }}
         token: ${{ secrets.GITHUB_TOKEN }}
-        name: "Josevka-v${{ env.SHORT_SHA }}"
+        name: "Josevka-${{ env.SHORT_SHA }}"
