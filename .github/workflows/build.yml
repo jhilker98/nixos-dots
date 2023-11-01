@@ -15,12 +15,12 @@ jobs:
       uses: cachix/install-nix-action@v22
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
+    
     - name: "Build Josevka"
       run: nix build -L .#josevka --cores 2
 
     - name: Create Short Sha
       run: echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
-
 
     - run: zip -9 josevka-v$SHORT_SHA.zip ./result/share/fonts/truetype/*.ttf
 
@@ -35,3 +35,4 @@ jobs:
         commit: ${{ github.event.head_commit.id }}
         tag: ${{ env.SHORT_SHA }}
         token: ${{ secrets.GITHUB_TOKEN }}
+        name: "Josevka-v${{ env.SHORT_SHA }}"
