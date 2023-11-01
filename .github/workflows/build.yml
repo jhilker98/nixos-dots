@@ -3,6 +3,10 @@ on:
  push:
   branches:
     - main
+  paths: 
+   - flake.nix
+   - utils/stylix/plans/*.toml
+   
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -11,11 +15,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    
     - name: "Install Nix"
       uses: cachix/install-nix-action@v22
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
-    
 
     - name: Create Short Sha
       run: echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
@@ -29,10 +33,10 @@ jobs:
       run: |
         nix build -L .#josevka-code --cores 2
         zip -9 josevka-code-$SHORT_SHA.zip ./result/share/fonts/truetype/*.ttf
-
+        
     - name: Expose git commit data
       uses: rlespinasse/git-commit-data-action@v1
-
+   
     - name: Release Fonts
       uses: ncipollo/release-action@v1
       with:
