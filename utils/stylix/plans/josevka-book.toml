@@ -64,6 +64,7 @@ export-glyph-names = true
     b = "toothed-motion-serifed"
     c = "bilateral-serifed"
     d = "tailed-serifed"
+    f = "flat-hook-serifless-crossbar-at-x-height"
     g = "single-storey-flat-hook-serifed"
     t = "flat-hook"
     capital-a = "curly-base-serifed"
