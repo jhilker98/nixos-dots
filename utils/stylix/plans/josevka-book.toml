@@ -1,14 +1,14 @@
-[buildPlans.josevka-book-sans]
+[buildPlans.iosevka-josevka-book-sans]
 family = "Josevka Book Sans"
 spacing = "quasi-proportional"
 serifs = "sans"
 no-cv-ss = true
 export-glyph-names = true
 
-  [buildPlans.josevka-book-sans.variants]
+  [buildPlans.iosevka-josevka-book-sans.variants]
   inherits = "ss03"
 
-    [buildPlans.josevka-book-sans.variants.design]
+    [buildPlans.iosevka-josevka-book-sans.variants.design]
     capital-j = "serifless"
     b = "toothless-rounded-serifless"
     f = "flat-hook-crossbar-at-x-height"
@@ -24,42 +24,42 @@ export-glyph-names = true
     question = "corner"
     cent = "open"
 
-  [buildPlans.josevka-book-sans.ligations]
+  [buildPlans.iosevka-josevka-book-sans.ligations]
   inherits = "dlig"
 
-[buildPlans.josevka-book-sans.widths.normal]
+[buildPlans.iosevka-josevka-book-sans.widths.normal]
 shape = 600
 menu = 5
 css = "normal"
 
-[buildPlans.josevka-book-sans.slopes.upright]
+[buildPlans.iosevka-josevka-book-sans.slopes.upright]
 angle = 0
 shape = "upright"
 menu = "upright"
 css = "normal"
 
-[buildPlans.josevka-book-sans.slopes.italic]
+[buildPlans.iosevka-josevka-book-sans.slopes.italic]
 angle = 9.4
 shape = "italic"
 menu = "italic"
 css = "italic"
 
-[[buildPlans.josevka-book-sans.compatibility-ligatures]]
+[[buildPlans.iosevka-josevka-book-sans.compatibility-ligatures]]
 unicode = 57633 # 0xe121
 featureTag = 'dlig'
 sequence = "\">"
 
-[buildPlans.josevka-book-slab]
+[buildPlans.iosevka-josevka-book-slab]
 family = "Josevka Book Slab"
 spacing = "quasi-proportional"
 serifs = "slab"
 no-cv-ss = true
 export-glyph-names = true
 
-[buildPlans.josevka-book-slab.variants]
+[buildPlans.iosevka-josevka-book-slab.variants]
   inherits = "ss03"
 
-    [buildPlans.josevka-book-slab.variants.design]
+    [buildPlans.iosevka-josevka-book-slab.variants.design]
     a = "double-storey-tailed"
     b = "toothed-motion-serifed"
     c = "bilateral-serifed"
@@ -74,26 +74,26 @@ export-glyph-names = true
     ascii-single-quote = "raised-comma"
     #ascii-grave = "raised-turn-comma"
 
-    [buildPlans.josevka-book-slab.variants.italic]
+    [buildPlans.iosevka-josevka-book-slab.variants.italic]
     e = "rounded"
     k = "symmetric-touching-serifed"
     x = "straight-serifed"
 
-  [buildPlans.josevka-book-slab.ligations]
+  [buildPlans.iosevka-josevka-book-slab.ligations]
   inherits = "dlig"
 
-[buildPlans.josevka-book-slab.widths.normal]
+[buildPlans.iosevka-josevka-book-slab.widths.normal]
 shape = 600
 menu = 5
 css = "normal"
 
-[buildPlans.josevka-book-slab.slopes.upright]
+[buildPlans.iosevka-josevka-book-slab.slopes.upright]
 angle = 0
 shape = "upright"
 menu = "upright"
 css = "normal"
 
-[buildPlans.josevka-book-slab.slopes.italic]
+[buildPlans.iosevka-josevka-book-slab.slopes.italic]
 angle = 9.4
 shape = "italic"
 menu = "italic"
