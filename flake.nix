@@ -113,7 +113,7 @@
       in {
         packages = rec {
           josevka = pkgs.iosevka.override {
-            privateBuildPlan = builtins.readFile ./utils/stylix/josevka.toml;
+            privateBuildPlan = builtins.readFile ./utils/stylix/plans/josevka.toml;
             set = "josevka";
           };
         };
