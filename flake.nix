@@ -124,6 +124,16 @@
             privateBuildPlan = builtins.readFile ./utils/stylix/plans/josevka-code.toml;
             set = "josevka-code";
           };
+
+          josevka-book-sans = pkgs.iosevka.override {
+            privateBuildPlan = builtins.readFile ./utils/stylix/plans/josevka-book.toml;
+            set = "josevka-book-sans";
+          };
+          josevka-book-slab = pkgs.iosevka.override {
+            privateBuildPlan = builtins.readFile ./utils/stylix/plans/josevka-book.toml;
+            set = "josevka-book-slab";
+          };
+
         };
       });
 }
