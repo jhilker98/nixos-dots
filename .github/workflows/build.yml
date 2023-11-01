@@ -38,6 +38,8 @@ jobs:
       run: |
         nix build -L .#josevka-book-sans --cores 2
         zip -9 josevka-book-sans-$SHORT_SHA.zip ./result/share/fonts/truetype/*.ttf
+        nix build -L .#josevka-book-slab --cores 2
+        zip -9 josevka-book-slab-$SHORT_SHA.zip ./result/share/fonts/truetype/*.ttf
 
     - name: Expose git commit data
       uses: rlespinasse/git-commit-data-action@v1
