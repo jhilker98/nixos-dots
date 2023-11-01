@@ -1141,3 +1141,54 @@ sequence = "<+>"
 unicode = 57804 # 0xe1cc
 featureTag = 'dlig'
 sequence = "+>"
+
+
+[buildPlans.iosevka-josevka-mono]
+family = "Josevka Mono"
+spacing = "fontconfig-mono"
+serifs = "sans"
+no-cv-ss = true
+no-ligation = true
+
+  [buildPlans.iosevka-josevka-mono.variants]
+  inherits = "buildPlans.iosevka-josevka"
+
+  [buildPlans.iosevka-josevka-mono.ligations]
+  inherits = "dlig"
+
+[buildPlans.iosevka-josevka-mono.weights.light]
+shape = 300
+menu = 300
+css = 300
+
+[buildPlans.iosevka-josevka-mono.weights.regular]
+shape = 400
+menu = 400
+css = 400
+
+[buildPlans.iosevka-josevka-mono.weights.medium]
+shape = 500
+menu = 500
+css = 500
+
+[buildPlans.iosevka-josevka-mono.weights.bold]
+shape = 700
+menu = 700
+css = 700
+
+[buildPlans.iosevka-josevka-mono.widths.normal]
+shape = 525
+menu = 5
+css = "normal"
+
+[buildPlans.iosevka-josevka-mono.slopes.upright]
+angle = 0
+shape = "upright"
+menu = "upright"
+css = "normal"
+
+[buildPlans.iosevka-josevka-mono.slopes.italic]
+angle = 9.4
+shape = "italic"
+menu = "italic"
+css = "italic"

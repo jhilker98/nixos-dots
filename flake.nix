@@ -116,6 +116,10 @@
             privateBuildPlan = builtins.readFile ./utils/stylix/plans/josevka.toml;
             set = "josevka";
           };
+          josevka-mono = pkgs.iosevka.override {
+            privateBuildPlan = builtins.readFile ./utils/stylix/plans/josevka.toml;
+            set = "josevka-mono";
+          };
         };
       });
 }
