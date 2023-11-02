@@ -84,6 +84,9 @@
     plantuml
     mermaid-cli
   ];
+  home.sessionPath = [
+    "$HOME/.local/bin"
+  ];
 
   programs.gpg.enable = true;
   services.gpg-agent = {
