@@ -15,7 +15,6 @@
   programs.home-manager.enable = true;
   home.packages = let
     extraNodePkgs = pkgs.callPackage ../packages/node { };
-    extraPythonPkgs = pkgs.callPackage ../packages/python { };
     # Fix any corruptions in the local copy.
     myGitFix = pkgs.writeShellScriptBin "git-fix" ''
       if [ -d .git/objects/ ]; then
@@ -42,7 +41,6 @@
         # httpx
         pygobject3
       ]))
-      extraPythonPkgs.bibulous
       act
     wakatime
     ttfautohint
