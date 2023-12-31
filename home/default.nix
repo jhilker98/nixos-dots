@@ -81,6 +81,7 @@
     nixfmt
     plantuml
     mermaid-cli
+    units
   ];
   home.sessionPath = [
     "$HOME/.local/bin"
