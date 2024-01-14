@@ -42,6 +42,7 @@
         pygobject3
       ]))
       act
+      tldr
     wakatime
     ttfautohint
     nodePackages.pyright
